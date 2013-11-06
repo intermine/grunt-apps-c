@@ -34,7 +34,7 @@ dir = __dirname
 
 # Some defaults true to all tests.
 defaults = (test) ->
-    src: [ "test/fixtures/#{test}/src/**/*.{coffee,js,eco}" ]
+    src: [ "test/fixtures/#{test}/src/**/*.{coffee,litcoffee,js,eco,dust}" ]
     dest: "test/fixtures/#{test}/build/app.actual.js"
 
 # The individual Grunt task options extending the defaults.
@@ -87,7 +87,17 @@ tests =
                 _.each errors, assert.ifError
                 assert.equal a, b
                 do cb
-            ]            
+            ]
+
+        commonjs_test_litcoffee: (test) ->
+            [
+                options:
+                    name: 'TestApp'
+            , ([ a, b ], cb) ->
+                _.each errors, assert.ifError
+                assert.equal a, b
+                do cb
+            ]
 
 # Export Mocha tests.
 for test, options of tests.apps_c then do (test, options) ->

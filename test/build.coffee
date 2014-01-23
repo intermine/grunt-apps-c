@@ -4,9 +4,29 @@ assert = require 'assert'
 async  = require 'async'
 fs     = require 'fs'
 _      = require 'lodash'
+stripC = require 'strip-ansi'
 
 # Track errors here.
 errors = []
+
+log =
+    'subhead': -> log
+    'error': (err) ->
+        errors.push stripC do err.toString
+        log
+    'or':
+        'error': -> log
+    'write': -> log
+    'writeln': -> log
+    'writeflags': -> log
+    'ok': -> log
+    'header': -> log
+    'initColors': -> log
+    'header': -> log
+    'debug': -> log
+    'wordlist': -> log
+
+log.verbose = log
 
 # Abuse these deps.
 deps =
@@ -15,7 +35,9 @@ deps =
             'TASK_FAILURE': null
         'report': ->
         'fatal': ->
-        'warn': (err) -> errors.push err
+        'warn': (err) -> errors.push stripC do err.toString
+    # The actual error message is logged, not thrown...
+    './grunt/log': log
 
 # Proxy require grunt.
 grunt = proxy 'grunt', deps
@@ -26,15 +48,12 @@ grunt.task.init = ->
 # Load our builder.
 grunt.loadTasks('tasks')
 
-# Silence output.
-grunt.loadNpmTasks('grunt-verbosity')
-
 # Here we are.
 dir = __dirname
 
 # Some defaults true to all tests.
 defaults = (test) ->
-    src: [ "test/fixtures/#{test}/src/**/*.{coffee,litcoffee,js,eco,dust}" ]
+    src: [ "test/fixtures/#{test}/src/**/*.{coffee,litcoffee,js,eco,mustache}" ]
     dest: "test/fixtures/#{test}/build/app.actual.js"
 
 # The individual Grunt task options extending the defaults.
@@ -56,7 +75,10 @@ tests =
                 options:
                     main: "test/fixtures/#{test}/src/index.js"
             , ([ a, b ], cb) ->
-                assert errors.length
+                assert.deepEqual errors, [
+                    'Package name is not defined'
+                    'Error: Task "apps_c:commonjs_test_noname" failed.'
+                ]
                 do cb
             ]
 
@@ -75,7 +97,10 @@ tests =
                 options:
                     name: 'TestApp'
             , ([ a, b ], cb) ->
-                assert errors.length
+                assert.deepEqual errors, [
+                    'Main index file not defined'
+                    'Error: Task "apps_c:commonjs_test_noindex" failed.'
+                ]
                 do cb
             ]
 
@@ -99,6 +124,48 @@ tests =
                 do cb
             ]
 
+        commonjs_test_mustache: (test) ->
+            [
+                options:
+                    name: 'TestApp'
+            , ([ a, b ], cb) ->
+                _.each errors, assert.ifError
+                assert.equal a, b
+                do cb
+            ]
+
+        commonjs_test_lineno: (test) ->
+            [
+                options:
+                    name: 'TestApp'
+            , ([ a, b ], cb) ->
+                assert.deepEqual errors, [
+                    'test/fixtures/commonjs_test_lineno/src/app.coffee:2:21: error: unexpected TERMINATOR',
+                    'Error: Task "apps_c:commonjs_test_lineno" failed.'
+                ]
+                do cb
+            ]
+
+        commonjs_test_dupes: (test) ->
+            [
+                options:
+                    main: "test/fixtures/#{test}/src/index.js"
+                    name: 'TestApp'
+            , ([ a, b ], cb) ->
+                assert.deepEqual errors, [
+                    'Duplicate file test/fixtures/commonjs_test_dupes/src/index.js',
+                    'Error: Task "apps_c:commonjs_test_dupes" failed.'
+                ]
+                do cb
+            ]
+
+        loader_test_only: (test) ->
+            [ {}, ([ a, b ], cb) ->
+                _.each errors, assert.ifError
+                assert.equal a, b
+                do cb
+            ]
+
 # Export Mocha tests.
 for test, options of tests.apps_c then do (test, options) ->
     # Create the config proper.
@@ -106,11 +173,9 @@ for test, options of tests.apps_c then do (test, options) ->
     tests.apps_c[test] = _.extend defaults(test), opts
 
     exports[test] = (done) ->
-        console.log '\n'
-
         # Run the task.
         async.waterfall [
-            _.partial(grunt.tasks, [ 'verbosity', 'apps_c:' + test ], {})
+            _.partial(grunt.tasks, [ "apps_c:#{test}" ], {})
 
         # Load actual & expected.
         , (cb) ->
@@ -135,9 +200,4 @@ for test, options of tests.apps_c then do (test, options) ->
             do done
 
 # Init the config inside Grunt.
-grunt.initConfig _.extend tests,
-    verbosity:
-        default:
-            options:
-                mode: 'hidden'
-            tasks: [ 'apps_c' ]
+grunt.initConfig tests

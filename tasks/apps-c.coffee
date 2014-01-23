@@ -1,9 +1,10 @@
-_     = require 'lodash'
-async = require 'async'
-glob  = require 'glob'
-path  = require 'path'
-fs    = require 'fs'
-eco = require 'eco'
+_      = require 'lodash'
+async  = require 'async'
+glob   = require 'glob'
+path   = require 'path'
+fs     = require 'fs'
+eco    = require 'eco'
+colors = require 'colors' # used by Grunt, require if we are running tests
 
 dir = __dirname
 
@@ -80,6 +81,7 @@ async.parallel
     ready = yes
     ( do cb for cb in callbacks )
 
+# CommonJS app build, by default with a loader.
 commonjs = (grunt, cb) ->
     pkg = grunt.config.data.pkg
 
@@ -125,6 +127,9 @@ commonjs = (grunt, cb) ->
         # Remove the extension. It will be a `.js` one.
         opts.main = opts.main.split('.')[0...-1].join('.')
 
+        # Keep track of outputs to detect dupes.
+        outputs = []
+
         # For each source.
         async.map sources, (source, cb) ->
             # Find the handler.
@@ -133,12 +138,28 @@ commonjs = (grunt, cb) ->
 
             # Run the handler.
             handler source, (err, result) ->
-                return cb err if err
+                return cb(do ->
+                    # The whole error text line.
+                    text = source
+                    text += ":#{err.line}" if err.line
+                    text += ":#{err.column}" if err.column
+                    text += ': error'
+                    text += ": #{err.message}" if err.message
+                ) if err
+
+                # Form the output path, always JS.
+                output = source.replace /\.[^/.]+$/, '.js'
+
+                # Do we have a dupe?
+                return cb "Duplicate file #{output.bold}" if output in outputs
+
+                # I guess not...
+                outputs.push output
 
                 # Wrap it in the module registry.
                 cb null, moulds.commonjs.module
                     'package': opts.name[0]
-                    'path': source
+                    'path': { source, output }
                     'script': moulds.lines
                         'spaces': 2
                         'lines': result
@@ -151,34 +172,58 @@ commonjs = (grunt, cb) ->
             modules = _.map modules, (module) ->
                 moulds.lines 'spaces': 4, 'lines': module
 
+            out = []
+
+            # By default we are including loader with the build.
+            opts.loader ?= yes
+
+            # Loader comes first?
+            out.push do moulds.commonjs.loader if opts.loader
+
             # Write a vanilla version and one packing a requirerer.
-            out = moulds.commonjs.loader
+            out.push moulds.commonjs.app
                 'modules': modules
                 'packages': opts.name
                 'main': opts.main
 
             # Write it.
-            fs.writeFile destination, out, cb
+            fs.writeFile destination, out.join("\n"), cb
     
     , cb
 
+# CommonJS loader only.
+loader = (grunt, cb) ->
+    # For each in/out config.
+    async.each @files, (file, cb) =>
+        # Where to?
+        destination = path.normalize file.dest
+        # What?
+        out = do moulds.commonjs.loader
+        # Do it.
+        fs.writeFile destination, out, cb
+    , cb
+
 module.exports = (grunt) ->
-    grunt.registerMultiTask 'apps_c', 'Apps/C - CoffeeScript, JavaScript, Eco', ->
+    grunt.registerMultiTask 'apps_c', 'CoffeeScript, JavaScript, Eco, Mustache as CommonJS/1.1 Modules', ->
         # Run in async.
         done = do @async
 
-        # Wrapper for error logging.
+        # Wrapper for error logging, done callback expects a boolean.
         cb = (err) ->
             return do done unless err
             grunt.log.error (do err.toString).red
-            done false
+            done no
 
         # Once our builder is ready...
         onReady = =>
             # The targets we support.
             switch
+                # CommonJS app build.
                 when @target.match /^commonjs/
                     commonjs.apply @, [ grunt, cb ]
+                # CommonJS loader only.
+                when @target.match /^loader/
+                    loader.apply @, [ grunt, cb ]
                 else
                     cb "Unsupported target `#{@target}`"
 

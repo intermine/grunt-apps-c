@@ -203,3 +203,52 @@
   root.require = (typeof root.require !== 'undefined') ? root.require : require;
 
 })(this);
+// Concat modules and export them as an app.
+(function(root) {
+
+  // All our modules will use global require.
+  (function() {
+    
+    // index.js
+    root.require.register('TestApp/test/fixtures/commonjs_test_mustache/src/index.js', function(exports, require, module) {
+    
+      
+    });
+
+    // template.mustache
+    root.require.register('TestApp/test/fixtures/commonjs_test_mustache/src/template.js', function(exports, require, module) {
+    
+      module.exports = ["Hello, my name is {{name}} aka \"{{nick}}\"...","...and I am an {{virtue}}."].join("\n");
+    });
+  })();
+
+  // Return the main app.
+  var main = root.require("TestApp/test/fixtures/commonjs_test_mustache/src/index.js");
+
+  // AMD/RequireJS.
+  if (typeof define !== 'undefined' && define.amd) {
+  
+    define("TestApp", [ /* load deps ahead of time */ ], function () {
+      return main;
+    });
+  
+  }
+
+  // CommonJS.
+  else if (typeof module !== 'undefined' && module.exports) {
+    module.exports = main;
+  }
+
+  // Globally exported.
+  else {
+  
+    root["TestApp"] = main;
+  
+  }
+
+  // Alias our app.
+  
+  root.require.alias("TestApp/test/fixtures/commonjs_test_mustache/src/index.js", "TestApp/index.js");
+  
+
+})(this);

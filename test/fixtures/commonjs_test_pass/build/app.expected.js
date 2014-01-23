@@ -1,4 +1,5 @@
-(function() {
+// A standalone CommonJS loader.
+(function(root) {
   /**
    * Require the given path.
    *
@@ -6,11 +7,11 @@
    * @return {Object} exports
    * @api public
    */
-  function require(path, parent, orig) {
+  var require = function(path, parent, orig) {
     var resolved = require.resolve(path);
 
     // lookup failed
-    if (null == resolved) {
+    if (!resolved) {
       orig = orig || path;
       parent = parent || 'root';
       var err = new Error('Failed to require "' + orig + '" from "' + parent + '"');
@@ -36,7 +37,7 @@
     }
 
     return module.exports;
-  }
+  };
 
   /**
    * Registered modules.
@@ -76,7 +77,7 @@
     ];
 
     for (var i = 0; i < paths.length; i++) {
-      var path = paths[i];
+      path = paths[i];
       if (require.modules.hasOwnProperty(path)) return path;
       if (require.aliases.hasOwnProperty(path)) return require.aliases[path];
     }
@@ -102,7 +103,7 @@
     for (var i = 0; i < path.length; ++i) {
       if ('..' == path[i]) {
         curr.pop();
-      } else if ('.' != path[i] && '' != path[i]) {
+      } else if ('.' !== path[i] && '' !== path[i]) {
         segs.push(path[i]);
       }
     }
@@ -164,10 +165,10 @@
      * The relative require() itself.
      */
 
-    function localRequire(path) {
+    var localRequire = function(path) {
       var resolved = localRequire.resolve(path);
       return require(resolved, parent, path);
-    }
+    };
 
     /**
      * Resolve relative to the parent.
@@ -198,27 +199,31 @@
     return localRequire;
   };
 
-  // All our modules will see our own require.
+  // Do we already have require loader?
+  root.require = (typeof root.require !== 'undefined') ? root.require : require;
+
+})(this);
+// Concat modules and export them as an app.
+(function(root) {
+
+  // All our modules will use global require.
   (function() {
     
-    
     // app.coffee
-    require.register('TestApp/test/fixtures/commonjs_test_pass/src/app.js', function(exports, require, module) {
+    root.require.register('TestApp/test/fixtures/commonjs_test_pass/src/app.js', function(exports, require, module) {
     
       
       
     });
 
-    
     // index.js
-    require.register('TestApp/test/fixtures/commonjs_test_pass/src/index.js', function(exports, require, module) {
+    root.require.register('TestApp/test/fixtures/commonjs_test_pass/src/index.js', function(exports, require, module) {
     
       
     });
 
-    
     // template.eco
-    require.register('TestApp/test/fixtures/commonjs_test_pass/src/template.js', function(exports, require, module) {
+    root.require.register('TestApp/test/fixtures/commonjs_test_pass/src/template.js', function(exports, require, module) {
     
       module.exports = function(__obj) {
         if (!__obj) __obj = {};
@@ -271,10 +276,7 @@
   })();
 
   // Return the main app.
-  var main = require("TestApp/test/fixtures/commonjs_test_pass/src/index.js");
-
-  // Global on server, window in browser.
-  var root = this;
+  var main = root.require("TestApp/test/fixtures/commonjs_test_pass/src/index.js");
 
   // AMD/RequireJS.
   if (typeof define !== 'undefined' && define.amd) {
@@ -299,9 +301,7 @@
 
   // Alias our app.
   
-  require.alias("TestApp/test/fixtures/commonjs_test_pass/src/index.js", "TestApp/index.js");
+  root.require.alias("TestApp/test/fixtures/commonjs_test_pass/src/index.js", "TestApp/index.js");
   
 
-  // Export internal loader?
-  root.require = (typeof root.require !== 'undefined') ? root.require : require;
-})();
+})(this);

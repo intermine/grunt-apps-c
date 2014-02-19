@@ -2,7 +2,7 @@
 
 CoffeeScript, JavaScript, JSON, Eco, Mustache as CommonJS/1.1 Modules. AMD/CommonJS/window external interface.
 
-[ ![Codeship Status for radekstepan/grunt-apps-c](https://www.codeship.io/projects/7c42c200-2543-0131-75e4-3aa0f2c98596/status?branch=master)](https://www.codeship.io/projects/8915)
+[ ![Codeship Status for radekstepan/grunt-apps-c](https://www.codeship.io/projects/7c42c200-2543-0131-75e4-3aa0f2c98596/status)](https://www.codeship.io/projects/8915)
 
 ##Quick start
 
@@ -155,6 +155,10 @@ Object.keys(require.modules)
 
 ##Changelog
 
+####0.1.15
+
+- Create folders, `mkdir -p`, for our builds if they do not exist already.
+
 ####0.1.14
 
 - Transpile [JSON](http://www.json.org/) into JS functions exported as modules.
@@ -182,3 +186,6 @@ Object.keys(require.modules)
 1. [pomme.js](https://github.com/radekstepan/pomme.js) - JS frames communication
 1. [deadmonton](https://github.com/radekstepan/deadmonton) - visualizing crime in Edmonton
 1. [github-burndown-chart](https://github.com/radekstepan/github-burndown-chart)
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/radekstepan/grunt-apps-c/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
